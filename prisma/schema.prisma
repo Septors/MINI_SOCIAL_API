@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+model User {
+  id                  Int     @id @default(autoincrement())
+  email               String  @unique
+  password            String
+  verified            Boolean?
+  role                Role    @default(USER)
+  currentRefreshToken String?
+
+  profile   Profile?
+  posts     Post[]
+  likes     Like[]
+  followers Follow[] @relation("FollowedBy")
+  following Follow[] @relation("Following")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Comment   Comment[]
+}
+
+model Profile {
+  id     Int     @id @default(autoincrement())
+  avatar String?
+  name   String
+  about  String?
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id    Int     @id @default(autoincrement())
+  title String
+  image String?
+  text  String
+
+  userId   Int
+  user     User      @relation(fields: [userId], references: [id])
+  likes    Like[]
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Like {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  postId Int
+
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, postId])
+}
+
+model Comment {
+  id Int @id @default(autoincrement())
+
+  text String
+
+  userId   Int
+  postId   Int
+  parentId Int?
+
+  user    User      @relation(fields: [userId], references: [id])
+  post    Post      @relation(fields: [postId], references: [id])
+  parent  Comment?  @relation("SubComments", fields: [parentId], references: [id])
+  replies Comment[] @relation("SubComments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Follow {
+  id Int @id @default(autoincrement())
+
+  followerId  Int
+  followingId Int
+
+  follower  User @relation("Following", fields: [followerId], references: [id])
+  following User @relation("FollowedBy", fields: [followingId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
